@@ -1,0 +1,11 @@
+.transaction-main{
+    width: 65%;
+    margin: 10px 40px 0 40px;
+}
+
+h2{
+    background: linear-gradient( to right, #1327cd, #192ee4, #19c9ce, #e8d20e);;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding: 0 0 20px;
+}
