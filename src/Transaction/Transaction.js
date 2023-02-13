@@ -10,7 +10,6 @@ const Transaction = (props) => {
     const [amount,setAmount] = useState(0);
     const [error,setError] = useState();
     const onSubmit = () => {
-        console.log("VAL",amount,address);
         if(address === "" || amount<=0){
             setError("Please Enter valid details");
         }
@@ -36,7 +35,7 @@ const Transaction = (props) => {
             </Col>
         </Form.Group>
         {error && <div>{error}</div>}
-        <Button id="submit-btn" onClick={() => onSubmit()} variant="outline-dark" size='lg' className='btn'>Transact</Button>
+        <Button id="submit-btn" onClick={() => onSubmit()} disabled={props.disableTransact} variant="outline-dark" size='lg' className='btn'>Transact</Button>
         </Form>
     );
 }

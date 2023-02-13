@@ -9,26 +9,54 @@ import { useEffect, useState, Fragment, useRef } from 'react';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import { networks, addChain } from './utils/constants'; 
 
 function App() {
-  const [btnText,setBtnText] = useState('Click here to install MetaMask!');
+  const [btnText,setBtnText] = useState('');
   const [account,setAccount] = useState();
   const [balance,setBalance] = useState(0);
   const [networkID,setNetworkID] = useState();
   const [networkName,setNetworkName] = useState('');
   const [error,setError] = useState();
   const [connectionSuccess,setConnectionSuccess] = useState(false);
+  const [disableTransact,setDisableTransact] = useState(false);
   const [hash,setHash] = useState('');
   const network = useRef(networkName);
-  // const provider = window.web3.currentProvider;
-  // const web3 = new Web3(provider);
+
+  const provider = window.web3.currentProvider;
+  const web3 = new Web3(provider);
 
   useEffect(()=>{
       if((window.ethereum && window.ethereum.isMetaMask) || (window.web3) ){
         setBtnText("Connect");
+        const accountWasChanged = (accounts) => {
+          setAccount(accounts[0]);
+        }
+        const getAndSetAccount = async () => {
+          const changedAccounts = await web3.eth.requestAccounts();
+          setAccount(changedAccounts[0]);
+        }
+        const clearAccount = () => {
+          setAccount('');
+        };
+        window.ethereum.on('chainChanged', () => {
+          window.location.reload();
+        });
+        window.ethereum.on('accountsChanged', accountWasChanged);
+        window.ethereum.on('connect', getAndSetAccount);
+        window.ethereum.on('disconnect', clearAccount);
+        if(window.ethereum.isConnected()){
+          onClickConnect();
+        }
       }else{
         setBtnText("Click here to install MetaMask!")
       }
+      // return () => {
+      //   //Unmounting..
+      //   window.ethereum.off('accountsChanged', accountWasChanged);
+      //   window.ethereum.off('connect', getAndSetAccount);
+      //   window.ethereum.off('disconnect', clearAccount);
+      // }    
   },[]);
 
   const onClickConnect = async() => {
@@ -39,19 +67,16 @@ function App() {
         // const response = await window.ethereum.request({ method: 'eth_requestAccounts' });
         // const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         // setAccount(accounts[0]);
-        const provider = window.web3.currentProvider;
-        const web3 = new Web3(provider);
         // const userAccount = await web3.eth.getAccounts();
         const userAccount = await web3.eth.requestAccounts();
         console.log("==============",userAccount);
         const account = userAccount[0];
         setAccount(account);
         let balance = await web3.eth.getBalance(account);
-        // balance = parseInt(balance)/1000000000000000000 + " ETH";
         balance = await web3.utils.fromWei(balance, 'ether');
         balance = balance + " ETH";
         setBalance(balance);
-        const networkID = await web3.eth.net.getId()
+        await web3.eth.net.getId()
           .then((id)=>{
             setNetworkID(id);
             getNetworkName(id);
@@ -65,11 +90,6 @@ function App() {
   }
 
   const getNetworkName = (id) => {
-    let networks = {
-      1: "Ethereum Mainnet",
-      97: "BNB Smart Chain Testnet",
-      80001: "Mumbai"
-    };
     setNetworkName(networks[id]);
     return networks[id];
   }
@@ -77,14 +97,28 @@ function App() {
   const onSwitch = async() => {
     if (networkID !== network.current.value) {
       try {
-        const provider = window.web3.currentProvider;
-        const web3 = new Web3(provider);
         await web3.currentProvider.request({
           method: 'wallet_switchEthereumChain',
             params: [{ chainId: Web3.utils.toHex(network.current.value) }],
           });
         setNetworkID(network.current.value);
       } catch (switchError) {
+          try{
+            let params = addChain[network.current.value]
+            console.log("🚀 ~ file: App.js:108 ~ onSwitch ~ params", params)
+            window.ethereum.request({
+              id: 1,
+              jsonrpc: "2.0",
+              method: 'wallet_addEthereumChain',
+              params: [params]
+            })
+            .catch((error) => {
+                console.log("==",error)
+            }) 
+          }catch(error){
+            console.log("====",error);
+            setError(error)
+          }
           setError(switchError);
       }
     }
@@ -96,28 +130,40 @@ function App() {
       const params = {
           from: sender,
           to: receiver,
-          value: (strEther)* 1000000000000000000,
+          value: (strEther)* 10**18,
           gas: 39000
       };
       console.log("🚀 ~ file: App.js:102 ~ payMeta ~ params", params)
       await window.ethereum.enable();
       window.web3 = new Web3(window.ethereum);    
-      const sendHash = window.web3.eth.sendTransaction(params)
+      window.web3.eth.sendTransaction(params)
         .once('transactionHash', function(hash){
           console.log('txnHash is ' + hash);
           setHash(hash);
+          setDisableTransact(false);
+        })
+        .on('confirmation',async function(){
+          let balance = await web3.eth.getBalance(account);
+          balance = await web3.utils.fromWei(balance, 'ether');
+          balance = balance + " ETH";
+          setBalance(balance);
         });
     } catch(e) {
-        console.log("payment fail!");
-        console.log(e);
+      console.log("payment fail!",e);
     }
   }
   const handleSubmit = (receiver,amt) => {
+    setDisableTransact(true);
     if(account !== receiver){
       payMeta(account, receiver, amt);
     }else{
       setError({message:"Sender and receiver's address cannot be the same"});
     }
+  }
+
+  const copyHash = () => {
+    navigator.clipboard.writeText(hash);
+    alert("Copied the text: " + hash);
   }
 
   return (
@@ -137,14 +183,15 @@ function App() {
             </Form.Label>
             <Col sm={9}>
             <Form.Select ref={network} onChange={onSwitch}>
-                {/* <option disabled={true}>Switch you network</option> */}
                 <option value="1" disabled={networkName === "Ethereum Mainnet"? true : false}>Ethereum Mainnet</option>
                 <option value="97" disabled={networkName === "BNB Smart Chain Testnet"? true : false}>BNB Smart Chain Testnet</option>
+                <option value="56" disabled={networkName === "Binance Smart Chain Mainnet"? true : false}>Binance Smart Chain Mainnet</option>
+                <option value="137" disabled={networkName === "Matic(Polygon) Mainnet"? true : false}>Matic(Polygon) Mainnet</option>
                 <option value="80001" disabled={networkName === "Mumbai"? true : false}>Mumbai</option>
             </Form.Select>
             </Col>
           </Form.Group>}
-          <Transaction handleSubmit={handleSubmit}/>
+          <Transaction handleSubmit={handleSubmit} disableTransact={disableTransact}/>
           <Form.Group as={Row} className="mb-3 mt-3 hash" controlId="formHorizontalEmail">
             <Form.Label column sm={3}>
                 Hash
@@ -152,7 +199,8 @@ function App() {
             <Col sm={9}>
                 <Form.Control type="text" placeholder={hash} readOnly/>
             </Col>
-        </Form.Group>
+          </Form.Group>
+          <Button onClick={copyHash} variant="outline-dark" size='lg'>Copy Hash</Button> 
         </Fragment>
         :
         <Fragment>

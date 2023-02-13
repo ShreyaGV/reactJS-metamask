@@ -35,6 +35,9 @@
 }
 .btn{
   min-width: 200px;
+  /* animation-fill-mode: both;
+  animation-name: fadeInDownSmall;
+  animation-duration: 2s; */
 }
 
 .App-header {
