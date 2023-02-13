@@ -41,7 +41,8 @@ function App() {
         // setAccount(accounts[0]);
         const provider = window.web3.currentProvider;
         const web3 = new Web3(provider);
-        const userAccount = await web3.eth.getAccounts();
+        // const userAccount = await web3.eth.getAccounts();
+        const userAccount = await web3.eth.requestAccounts();
         console.log("==============",userAccount);
         const account = userAccount[0];
         setAccount(account);
@@ -95,9 +96,10 @@ function App() {
       const params = {
           from: sender,
           to: receiver,
-          value: strEther,
+          value: (strEther)* 1000000000000000000,
           gas: 39000
       };
+      console.log("🚀 ~ file: App.js:102 ~ payMeta ~ params", params)
       await window.ethereum.enable();
       window.web3 = new Web3(window.ethereum);    
       const sendHash = window.web3.eth.sendTransaction(params)
@@ -111,7 +113,11 @@ function App() {
     }
   }
   const handleSubmit = (receiver,amt) => {
-    payMeta(account, receiver, amt);
+    if(account !== receiver){
+      payMeta(account, receiver, amt);
+    }else{
+      setError({message:"Sender and receiver's address cannot be the same"});
+    }
   }
 
   return (
