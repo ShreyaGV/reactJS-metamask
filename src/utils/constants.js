@@ -10,6 +10,17 @@ export const networks = {
 };
 
 export const addChain = {
+    1: {
+        chainId: '0x1',
+        chainName: 'Ethereum Mainnet',
+        nativeCurrency: {
+            name: 'Ether',
+            symbol: 'ETH',
+            decimals: 18
+        },
+        rpcUrls: ['https://eth.llamarpc.com'],
+        blockExplorerUrls: ['https://etherscan.io/']
+    },
     56: {
         chainId: '0x38',
         chainName: 'Binance Smart Chain Mainnet',
@@ -33,8 +44,7 @@ export const addChain = {
         blockExplorerUrls: ['https://testnet.bscscan.com/']
     },
     137: {
-        chainId: Web3.utils.toHex(137),
-        // chainId: '0x89',
+        chainId: '0x89',
         chainName: 'Polygon Mainnet',
         nativeCurrency: { 
             name: 'MATIC',
@@ -42,7 +52,7 @@ export const addChain = {
             decimals: 18
         },
         rpcUrls: ['https://polygon-rpc.com'],
-        blockExplorerUrls: ['https://www.polygonscan.com'],
+        blockExplorerUrls: ['https://www.polygonscan.com/'],
     },
     80001: {
         chainId: "0x13881",

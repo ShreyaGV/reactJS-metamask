@@ -9,6 +9,7 @@ import { useEffect, useState, Fragment, useRef } from 'react';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import Toast from 'react-bootstrap/Toast';
 import { networks, addChain } from './utils/constants'; 
 
 function App() {
@@ -20,6 +21,10 @@ function App() {
   const [error,setError] = useState();
   const [connectionSuccess,setConnectionSuccess] = useState(false);
   const [disableTransact,setDisableTransact] = useState(false);
+  const [copyHashBtn,setCopyHashBtn] = useState(true);
+  const [showA,setShowA] = useState(false);
+  const [toastMsg,setToastMsg] = useState('');
+  const [link,setLink] = useState('');
   const [hash,setHash] = useState('');
   const network = useRef(networkName);
 
@@ -29,8 +34,12 @@ function App() {
   useEffect(()=>{
       if((window.ethereum && window.ethereum.isMetaMask) || (window.web3) ){
         setBtnText("Connect");
-        const accountWasChanged = (accounts) => {
+        const accountWasChanged = async(accounts) => {
           setAccount(accounts[0]);
+          let balance = await web3.eth.getBalance(accounts[0]);
+          balance = await web3.utils.fromWei(balance, 'ether');
+          balance = balance + " ETH";
+          setBalance(balance);
         }
         const getAndSetAccount = async () => {
           const changedAccounts = await web3.eth.requestAccounts();
@@ -50,14 +59,10 @@ function App() {
         }
       }else{
         setBtnText("Click here to install MetaMask!")
-      }
-      // return () => {
-      //   //Unmounting..
-      //   window.ethereum.off('accountsChanged', accountWasChanged);
-      //   window.ethereum.off('connect', getAndSetAccount);
-      //   window.ethereum.off('disconnect', clearAccount);
-      // }    
+      }    
   },[]);
+
+  const toggleShowA = () => setShowA(!showA);
 
   const onClickConnect = async() => {
     if(btnText === "Click here to install MetaMask!"){
@@ -105,7 +110,6 @@ function App() {
       } catch (switchError) {
           try{
             let params = addChain[network.current.value]
-            console.log("🚀 ~ file: App.js:108 ~ onSwitch ~ params", params)
             window.ethereum.request({
               id: 1,
               jsonrpc: "2.0",
@@ -119,7 +123,13 @@ function App() {
             console.log("====",error);
             setError(error)
           }
-          setError(switchError);
+          if(switchError.code === 4001){
+            setError(switchError);
+          }else{
+            setToastMsg(switchError.message);
+            console.log("======ERRORRRRR");
+            setShowA(true);
+          }
       }
     }
     onClickConnect();
@@ -133,13 +143,15 @@ function App() {
           value: (strEther)* 10**18,
           gas: 39000
       };
-      console.log("🚀 ~ file: App.js:102 ~ payMeta ~ params", params)
       await window.ethereum.enable();
       window.web3 = new Web3(window.ethereum);    
       window.web3.eth.sendTransaction(params)
         .once('transactionHash', function(hash){
           console.log('txnHash is ' + hash);
           setHash(hash);
+          const link = addChain[networkID].blockExplorerUrls + 'tx/' + hash;
+          setLink(link);
+          setCopyHashBtn(false);
           setDisableTransact(false);
         })
         .on('confirmation',async function(){
@@ -172,6 +184,11 @@ function App() {
       {error && 
         <Modal error={error} handleClose={()=>{setError('')}}/>
       }
+      {toastMsg && 
+        <Toast show={showA} onClose={toggleShowA} bg='dark' autohide delay={1000} className='Light'>
+          <Toast.Body>{toastMsg}</Toast.Body>
+        </Toast>
+      }
       {account ? 
         <Fragment>
           <img src={metamask} className="logo-sm" alt="logo" />
@@ -200,7 +217,10 @@ function App() {
                 <Form.Control type="text" placeholder={hash} readOnly/>
             </Col>
           </Form.Group>
-          <Button onClick={copyHash} variant="outline-dark" size='lg'>Copy Hash</Button> 
+          <div className='d-flex'>
+            <Button onClick={copyHash} disabled={copyHashBtn} variant="outline-dark" size='lg'>Copy Hash</Button>
+            {!copyHashBtn && <div className="m-auto px-3"><a className='text-decoration-none text-white'href={link}>View Log</a></div>}
+          </div>
         </Fragment>
         :
         <Fragment>
