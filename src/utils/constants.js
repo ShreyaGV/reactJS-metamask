@@ -1,5 +1,3 @@
-import Web3 from 'web3';
-
 export const networks = {
     1: "Ethereum Mainnet",
     97: "BNB Smart Chain Testnet",
